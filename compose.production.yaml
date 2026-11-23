@@ -1,0 +1,66 @@
+name: saturnita-production
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pulse
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a random URL-safe password}
+    volumes: [db-data:/var/lib/postgresql/data]
+    networks: [database]
+    healthcheck:
+      test: ["CMD","pg_isready","-U","pulse","-d","pulse"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: migrate/migrate:v4.18.3
+    command: ["-path","/migrations","-database","postgres://pulse:${POSTGRES_PASSWORD}@db/pulse?sslmode=disable","up"]
+    volumes: [./backend/migrations:/migrations:ro]
+    networks: [database]
+    depends_on:
+      db: {condition: service_healthy}
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DATABASE_URL: postgres://pulse:${POSTGRES_PASSWORD}@db/pulse?sslmode=disable
+      APP_ORIGIN: https://saturnita.ru
+      ANALYTICS_MASTER_KEY: ${ANALYTICS_MASTER_KEY:?set a random master key of 32+ bytes}
+      MONITOR_WORKERS: ${MONITOR_WORKERS:-10}
+      PULSE_EDGE: caddy
+    networks: [database,edge]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD-SHELL","wget -q -O /dev/null --header='Host: saturnita.ru' http://127.0.0.1:8080/readyz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  edge:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
+    restart: unless-stopped
+    ports: ["80:80","443:443"]
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set an ACME contact}
+    volumes:
+      - ./deploy/Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - ${WILDCARD_CERT_DIR:?set certificate directory}:/certs:ro
+      - tls-data:/data
+      - tls-config:/config
+    networks: [edge]
+    depends_on:
+      backend: {condition: service_healthy}
+networks:
+  database: {internal: true}
+  edge: {}
+volumes:
+  db-data: {}
+  tls-data: {}
+  tls-config: {}

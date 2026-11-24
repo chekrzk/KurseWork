@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pulse
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulse_local}
+    volumes:
+      - pulse-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U pulse -d pulse"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: migrate/migrate:v4.18.3
+    volumes:
+      - ./backend/migrations:/migrations:ro
+    command: ["-path","/migrations","-database","postgres://pulse:${POSTGRES_PASSWORD:-pulse_local}@db/pulse?sslmode=disable","up"]
+    depends_on:
+      db:
+        condition: service_healthy
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://pulse:${POSTGRES_PASSWORD:-pulse_local}@db/pulse?sslmode=disable
+      APP_ORIGIN: http://localhost:${APP_PORT:-5173}
+      PULSE_EDGE: caddy
+      MONITOR_WORKERS: ${MONITOR_WORKERS:-10}
+      ANALYTICS_MASTER_KEY: ${ANALYTICS_MASTER_KEY:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
+    environment:
+      API_TARGET: http://backend:8080
+    depends_on:
+      - backend
+  edge:
+    image: caddy:2-alpine
+    volumes:
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:${APP_PORT:-5173}:5173"
+    depends_on:
+      - frontend
+volumes:
+  pulse-data:

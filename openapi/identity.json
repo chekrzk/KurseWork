@@ -1,0 +1,475 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Saturnita Pulse",
+    "version": "0.4.0",
+    "description": "Локальное API кабинета. Изменяющие запросы требуют точного Origin приложения."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "session": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Регистрация",
+        "responses": {
+          "201": {
+            "description": "Регистрация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password",
+                  "display_name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Вход",
+        "responses": {
+          "200": {
+            "description": "Вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Выход",
+        "responses": {
+          "204": {
+            "description": "Выход"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Профиль",
+        "responses": {
+          "200": {
+            "description": "Профиль",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Обновить профиль",
+        "responses": {
+          "200": {
+            "description": "Обновить профиль",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/password": {
+      "put": {
+        "summary": "Смена пароля",
+        "responses": {
+          "204": {
+            "description": "Смена пароля"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "current_password": {
+                    "type": "string"
+                  },
+                  "new_password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "current_password",
+                  "new_password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sessions": {
+      "get": {
+        "summary": "Сессии кабинета",
+        "responses": {
+          "200": {
+            "description": "Сессии кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "next_cursor"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sessions/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "delete": {
+        "summary": "Завершить сессию",
+        "responses": {
+          "204": {
+            "description": "Завершить сессию"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/healthz": {
+      "servers": [
+        {
+          "url": "/"
+        }
+      ],
+      "get": {
+        "summary": "healthz",
+        "responses": {
+          "200": {
+            "description": "healthz"
+          }
+        },
+        "security": []
+      }
+    },
+    "/readyz": {
+      "servers": [
+        {
+          "url": "/"
+        }
+      ],
+      "get": {
+        "summary": "readyz",
+        "responses": {
+          "200": {
+            "description": "readyz"
+          }
+        },
+        "security": []
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "saturnita_session"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "locale": {
+            "enum": [
+              "ru",
+              "en"
+            ],
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "display_name",
+          "timezone",
+          "locale",
+          "preferences",
+          "id",
+          "email",
+          "created_at"
+        ]
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "locale": {
+            "enum": [
+              "ru",
+              "en"
+            ],
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "timezone",
+          "locale",
+          "preferences",
+          "id",
+          "email",
+          "created_at",
+          "csrf_token"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "user_agent": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "current",
+          "user_agent",
+          "created_at",
+          "last_seen_at",
+          "expires_at"
+        ]
+      },
+      "ProfilePatch": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "locale": {
+            "enum": [
+              "ru",
+              "en"
+            ],
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": []
+      }
+    }
+  }
+}

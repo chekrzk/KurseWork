@@ -1,0 +1,21 @@
+{
+ auto_https off
+ admin off
+}
+:5173 {
+ @internal path /internal/*
+ respond @internal 404
+ @app host localhost
+ handle @app {
+  @api path /api/* /healthz /readyz
+  reverse_proxy @api backend:8080 {
+   header_up X-Pulse-IP {remote_host}
+  }
+  reverse_proxy frontend:5173
+ }
+ handle {
+  reverse_proxy backend:8080 {
+   header_up X-Pulse-IP {remote_host}
+  }
+ }
+}

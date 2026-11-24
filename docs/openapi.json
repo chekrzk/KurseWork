@@ -1,0 +1,1956 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Saturnita Pulse — проект этапа 1",
+    "version": "0.1.0-design",
+    "description": "Модульный Go backend. Архивирование сохраняет историю. Retention кликов и web events 180 дней, checks 90 дней. Worker использует PostgreSQL lease и bounded pool."
+  },
+  "servers": [
+    {
+      "url": "https://saturnita.ru/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "session": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Регистрация",
+        "responses": {
+          "201": {
+            "description": "Регистрация"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password",
+                  "display_name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Вход",
+        "responses": {
+          "200": {
+            "description": "Вход"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Выход",
+        "responses": {
+          "204": {
+            "description": "Выход"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Профиль",
+        "responses": {
+          "200": {
+            "description": "Профиль"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Обновить профиль",
+        "responses": {
+          "200": {
+            "description": "Обновить профиль"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/password": {
+      "put": {
+        "summary": "Смена пароля",
+        "responses": {
+          "204": {
+            "description": "Смена пароля"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "current_password": {
+                    "type": "string"
+                  },
+                  "new_password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "current_password",
+                  "new_password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sessions": {
+      "get": {
+        "summary": "Сессии кабинета",
+        "responses": {
+          "200": {
+            "description": "Сессии кабинета"
+          }
+        }
+      }
+    },
+    "/me/sessions/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "delete": {
+        "summary": "Завершить сессию",
+        "responses": {
+          "204": {
+            "description": "Завершить сессию"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/links": {
+      "get": {
+        "summary": "Список links",
+        "responses": {
+          "200": {
+            "description": "Список links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Создать links",
+        "responses": {
+          "201": {
+            "description": "Создать links"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/links/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Детали links",
+        "responses": {
+          "200": {
+            "description": "Детали links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Архивирование сохраняет статистику и приостанавливает связанный монитор",
+        "responses": {
+          "200": {
+            "description": "Архивирование сохраняет статистику и приостанавливает связанный монитор"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkPatch"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Окончательное удаление links",
+        "responses": {
+          "204": {
+            "description": "Окончательное удаление links"
+          }
+        },
+        "parameters": [
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/sites": {
+      "get": {
+        "summary": "Список sites",
+        "responses": {
+          "200": {
+            "description": "Список sites",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Создать sites",
+        "responses": {
+          "201": {
+            "description": "Создать sites"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Site"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sites/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Детали sites",
+        "responses": {
+          "200": {
+            "description": "Детали sites",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Обновить sites",
+        "responses": {
+          "200": {
+            "description": "Обновить sites"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Site"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Окончательное удаление sites",
+        "responses": {
+          "204": {
+            "description": "Окончательное удаление sites"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/monitors": {
+      "get": {
+        "summary": "Список monitors",
+        "responses": {
+          "200": {
+            "description": "Список monitors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Создать monitors",
+        "responses": {
+          "201": {
+            "description": "Создать monitors"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitors/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Детали monitors",
+        "responses": {
+          "200": {
+            "description": "Детали monitors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Обновить monitors",
+        "responses": {
+          "200": {
+            "description": "Обновить monitors"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorPatch"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Окончательное удаление monitors",
+        "responses": {
+          "204": {
+            "description": "Окончательное удаление monitors"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/links/{id}/analytics": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Отчёт за период",
+        "responses": {
+          "200": {
+            "description": "Отчёт за период",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "daily_unique_visitors_sum": {
+                          "$ref": "#/components/schemas/DailyUniques"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ]
+      }
+    },
+    "/sites/{id}/analytics": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Отчёт за период",
+        "responses": {
+          "200": {
+            "description": "Отчёт за период",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "daily_unique_visitors_sum": {
+                          "$ref": "#/components/schemas/DailyUniques"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ]
+      }
+    },
+    "/link-analytics": {
+      "get": {
+        "summary": "Отчёт за период",
+        "responses": {
+          "200": {
+            "description": "Отчёт за период",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "daily_unique_visitors_sum": {
+                          "$ref": "#/components/schemas/DailyUniques"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ]
+      }
+    },
+    "/links/{id}/clicks": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Получить links/{id}/clicks",
+        "responses": {
+          "200": {
+            "description": "Получить links/{id}/clicks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sites/{id}/snippet": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Получить sites/{id}/snippet",
+        "responses": {
+          "200": {
+            "description": "Получить sites/{id}/snippet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitors/{id}/checks": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Получить monitors/{id}/checks",
+        "responses": {
+          "200": {
+            "description": "Получить monitors/{id}/checks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitors/{id}/incidents": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Получить monitors/{id}/incidents",
+        "responses": {
+          "200": {
+            "description": "Получить monitors/{id}/incidents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitors/{id}/analytics": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Получить monitors/{id}/analytics",
+        "responses": {
+          "200": {
+            "description": "Получить monitors/{id}/analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/overview": {
+      "get": {
+        "summary": "Получить dashboard/overview",
+        "responses": {
+          "200": {
+            "description": "Получить dashboard/overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains": {
+      "get": {
+        "summary": "Получить domains",
+        "responses": {
+          "200": {
+            "description": "Получить domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Получить domains/{id}",
+        "responses": {
+          "200": {
+            "description": "Получить domains/{id}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Удалить свободный домен",
+        "responses": {
+          "204": {
+            "description": "Удалить свободный домен"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/monitors/{id}/pause": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "pause",
+        "responses": {
+          "204": {
+            "description": "pause"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/monitors/{id}/resume": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "resume",
+        "responses": {
+          "204": {
+            "description": "resume"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/monitors/{id}/check": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "check",
+        "responses": {
+          "202": {
+            "description": "check"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/domains/subdomains": {
+      "post": {
+        "summary": "Один персональный поддомен на владельца",
+        "responses": {
+          "201": {
+            "description": "Один персональный поддомен на владельца"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/custom": {
+      "post": {
+        "summary": "Заявка на DNS-подтверждение",
+        "responses": {
+          "201": {
+            "description": "Заявка на DNS-подтверждение"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hostname": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "hostname"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{id}/verify": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "verify",
+        "responses": {
+          "200": {
+            "description": "verify"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/domains/{id}/activate": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "activate",
+        "responses": {
+          "200": {
+            "description": "activate"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/domains/{id}/verification/rotate": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "verification/rotate",
+        "responses": {
+          "200": {
+            "description": "verification/rotate"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/sites/{id}/origins": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "put": {
+        "summary": "Заменить разрешённые origins",
+        "responses": {
+          "200": {
+            "description": "Заменить разрешённые origins"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "origins": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "maxLength": 2048
+                    }
+                  }
+                },
+                "required": [
+                  "origins"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collect": {
+      "options": {
+        "summary": "Точный Origin активного сайта, credentials отключены, до 32 KiB на событие",
+        "responses": {
+          "204": {
+            "description": "Точный Origin активного сайта, credentials отключены, до 32 KiB на событие",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "const": "Origin"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Точный Origin активного сайта, credentials отключены, до 32 KiB на событие",
+        "responses": {
+          "204": {
+            "description": "Точный Origin активного сайта, credentials отключены, до 32 KiB на событие",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "const": "Origin"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Превышен размер"
+          },
+          "422": {
+            "description": "Ошибка формата"
+          },
+          "429": {
+            "description": "Лимит запросов"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "servers": [
+        {
+          "url": "https://saturnita.ru"
+        }
+      ],
+      "get": {
+        "summary": "healthz",
+        "responses": {
+          "200": {
+            "description": "healthz"
+          }
+        },
+        "security": []
+      }
+    },
+    "/readyz": {
+      "servers": [
+        {
+          "url": "https://saturnita.ru"
+        }
+      ],
+      "get": {
+        "summary": "readyz",
+        "responses": {
+          "200": {
+            "description": "readyz"
+          }
+        },
+        "security": []
+      }
+    },
+    "/{slug}": {
+      "servers": [
+        {
+          "url": "https://{host}",
+          "variables": {
+            "host": {
+              "default": "go.saturnita.ru",
+              "description": "Активный hostname из domains"
+            }
+          }
+        }
+      ],
+      "get": {
+        "summary": "302 только для активного зарегистрированного host. Сохранить query цели, заменить явно настроенные UTM, игнорировать входящий query.",
+        "responses": {
+          "302": {
+            "description": "302 только для активного зарегистрированного host. Сохранить query цели, заменить явно настроенные UTM, игнорировать входящий query.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri",
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "head": {
+        "summary": "302 только для активного зарегистрированного host. Сохранить query цели, заменить явно настроенные UTM, игнорировать входящий query.",
+        "responses": {
+          "302": {
+            "description": "302 только для активного зарегистрированного host. Сохранить query цели, заменить явно настроенные UTM, игнорировать входящий query.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri",
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "saturnita_session"
+      }
+    },
+    "schemas": {
+      "UTM": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "medium": {
+            "type": "string"
+          },
+          "campaign": {
+            "type": "string"
+          },
+          "term": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "LinkCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "target_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "utm": {
+            "$ref": "#/components/schemas/UTM"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "click_limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "monitor_target": {
+            "type": "boolean"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "domain_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "name",
+          "target_url",
+          "domain_id"
+        ],
+        "additionalProperties": false
+      },
+      "LinkPatch": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "target_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "utm": {
+            "$ref": "#/components/schemas/UTM"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "click_limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "monitor_target": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "archived"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "Site": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "origins": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "Status": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "operational",
+          "degraded",
+          "down",
+          "paused"
+        ]
+      },
+      "MonitorCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "HTTP/HTTPS, порт 80/443. DNS и фактический IP должны быть публичными. Redirect отключён. 3xx проверяется по ожидаемому диапазону."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "website",
+              "api"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD"
+            ]
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 30000
+          },
+          "interval_seconds": {
+            "type": "integer",
+            "minimum": 300,
+            "maximum": 86400
+          },
+          "expected_status": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "integer"
+              },
+              "max": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "kind",
+          "method",
+          "timeout_ms",
+          "interval_seconds",
+          "expected_status"
+        ],
+        "additionalProperties": false
+      },
+      "MonitorPatch": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "HTTP/HTTPS, порт 80/443. DNS и фактический IP должны быть публичными. Redirect отключён. 3xx проверяется по ожидаемому диапазону."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "website",
+              "api"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD"
+            ]
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 30000
+          },
+          "interval_seconds": {
+            "type": "integer",
+            "minimum": 300,
+            "maximum": 86400
+          },
+          "expected_status": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "integer"
+              },
+              "max": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "DailyUniques": {
+        "type": "integer",
+        "minimum": 0,
+        "title": "Приблизительные уникальные посетители",
+        "description": "Сумма дневных DISTINCT в UTC за выбранный диапазон. Дневной псевдоним HMAC-SHA256. Один посетитель может учитываться в разные дни."
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "pageview",
+              "custom"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "referrer": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "utm": {
+            "$ref": "#/components/schemas/UTM"
+          },
+          "properties": {
+            "type": "object",
+            "maxProperties": 16,
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "maxLength": 255
+            }
+          }
+        },
+        "required": [
+          "site_id",
+          "event_id",
+          "type",
+          "name",
+          "occurred_at"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

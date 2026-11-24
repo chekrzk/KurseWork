@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Проверка трекера Saturnita Pulse</title>
+  <h1>Проверка трекера</h1>
+  <p id="info"></p>
+  <button id="send">Отправить событие demo_click</button>
+  <script>
+    const id = new URLSearchParams(location.search).get("site_id");
+    const info = document.querySelector("#info"),
+      button = document.querySelector("#send");
+    button.disabled = true;
+    if (/^[0-9a-f-]{36}$/i.test(id || "")) {
+      const script = document.createElement("script");
+      script.src = "/tracker.js";
+      script.dataset.siteId = id;
+      script.onload = () => {
+        info.textContent =
+          "Трекер загружен. Результат приёма виден в отчёте сайта.";
+        button.disabled = false;
+      };
+      document.head.append(script);
+      button.onclick = () =>
+        window.Saturnita.track("demo_click", { source: "demo" });
+    } else
+      info.textContent =
+        "Добавьте к адресу ?site_id= и публичный ID своего сайта.";
+  </script>
+</html>

@@ -1,0 +1,44 @@
+name: Saturnita CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: VITE_DEMO_MODE=true docker compose up -d --build
+      - run: |
+          docker compose exec -T db pg_dump --schema-only -U pulse pulse >/dev/null
+          docker run --rm --network "$(docker inspect "$(docker compose ps -q db)" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')" -v "$PWD/backend:/src:ro" -w /src -e TEST_DATABASE_URL=postgres://pulse:pulse_local@db/pulse?sslmode=disable golang:1.26 go test -race ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...
+        working-directory: backend
+      - run: go vet ./...
+        working-directory: backend
+      - name: Check backup restore, production build and TLS configuration
+        env:
+          POSTGRES_PASSWORD: ci-only
+          ANALYTICS_MASTER_KEY: ci-placeholder-for-config-validation
+          ACME_EMAIL: ops@example.test
+          WILDCARD_CERT_DIR: /tmp/pulse-certs
+        run: |
+          network=$(docker inspect "$(docker compose ps -q db)" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')
+          docker run --rm --network "$network" -v "$PWD/deploy:/ops:ro" -e PGHOST=db -e PGUSER=pulse -e PGPASSWORD=pulse_local postgres:16-alpine sh /ops/restore-drill.sh
+          docker compose -f compose.production.yaml config --quiet
+          docker build -q -f frontend/Dockerfile.production -t pulse-edge:check frontend
+          mkdir -m 700 "$WILDCARD_CERT_DIR"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=*.saturnita.test' -keyout "$WILDCARD_CERT_DIR/wildcard.key" -out "$WILDCARD_CERT_DIR/wildcard.pem"
+          docker run --rm --network none -e ACME_EMAIL -v "$PWD/deploy/Caddyfile.production:/etc/caddy/Caddyfile:ro" -v "$WILDCARD_CERT_DIR:/certs:ro" pulse-edge:check caddy validate --config /etc/caddy/Caddyfile
+      - run: npm ci && npm run api:types && git diff --exit-code -- src/generated.ts src/product-generated.ts && npm run lint && npm run typecheck && npm run build && npx playwright install --with-deps chromium && npm test
+        working-directory: frontend
+        env:
+          TEST_DEMO: 'true'
+      - if: always()
+        run: docker compose down

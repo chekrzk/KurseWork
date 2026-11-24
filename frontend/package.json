@@ -1,0 +1,38 @@
+{
+  "name": "saturnita-pulse",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "preview": "vite preview",
+    "api:types": "openapi-typescript ../openapi/identity.json -o src/generated.ts && openapi-typescript ../openapi/product.json -o src/product-generated.ts",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.2.0",
+    "@fontsource/jetbrains-mono": "^5.2.0",
+    "@fontsource/space-grotesk": "^5.2.0",
+    "@radix-ui/react-dialog": "^1.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0",
+    "recharts": "^3.11.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.35.0",
+    "openapi-typescript": "^7.13.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.42.0",
+    "vite": "^7.1.0"
+  }
+}
